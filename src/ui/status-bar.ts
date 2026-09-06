@@ -8,6 +8,23 @@ import {
   createFetchErrorTooltip,
   createUpdateErrorTooltip,
 } from './tooltip-builder'
+import {
+  WARNING_THRESHOLD,
+  CRITICAL_THRESHOLD,
+} from './progress-bar'
+
+const STATUS_COLORS = {
+  light: {
+    green: '#1a7f37',
+    yellow: '#9a6700',
+    red: '#cf222e',
+  },
+  dark: {
+    green: '#7ee787',
+    yellow: '#e3b341',
+    red: '#ff7b72',
+  },
+} as const
 
 let statusBarItem: vscode.StatusBarItem
 let currentRateLimits: RateLimits | undefined
@@ -55,23 +72,42 @@ function renderCurrentUsage() {
   const displayMode = config.get<UsageDisplayMode>('displayMode', 'used')
 
   // Determine usage percentages
-  let primaryPercent = 0
-  let secondaryPercent = 0
-  let statusColor = 'charts.green'
+  const primaryPercent = currentRateLimits.primary?.used_percent
+  const secondaryPercent = currentRateLimits.secondary?.used_percent
 
-  if (currentRateLimits.primary) {
-    primaryPercent = currentRateLimits.primary.used_percent
+  // Show the most constrained window in the status bar. In used mode this is
+  // the highest usage; in remaining mode it is the lowest remaining value.
+  const availableUsedPercents: number[] = []
+  if (primaryPercent !== undefined) availableUsedPercents.push(primaryPercent)
+  if (secondaryPercent !== undefined)
+    availableUsedPercents.push(secondaryPercent)
+
+  if (availableUsedPercents.length === 0) {
+    statusBarItem.text = '$(codex-blossom) —'
+    statusBarItem.color = undefined
+    statusBarItem.backgroundColor = undefined
+    statusBarItem.tooltip = createMainTooltip(
+      currentRateLimits,
+      currentAuthData,
+      primaryPercent,
+      secondaryPercent,
+      displayMode,
+      currentUsageUpdatedAt,
+    )
+    return
   }
 
-  if (currentRateLimits.secondary) {
-    secondaryPercent = currentRateLimits.secondary.used_percent
-  }
+  const mostConstrainedUsedPercent = Math.max(...availableUsedPercents)
+  const statusColor = getStatusColor(mostConstrainedUsedPercent)
 
-  const primaryDisplayPercent = getDisplayPercent(primaryPercent, displayMode)
+  const mostConstrainedDisplayPercent = getDisplayPercent(
+    mostConstrainedUsedPercent,
+    displayMode,
+  )
 
-  // Update status bar text with custom icon - no colors
-  statusBarItem.text = `$(codex-blossom) ${primaryDisplayPercent.toFixed(0)}%`
-  statusBarItem.color = undefined
+  // Update status bar text with usage-mapped color
+  statusBarItem.text = `$(codex-blossom) ${mostConstrainedDisplayPercent.toFixed(0)}%`
+  statusBarItem.color = statusColor
   statusBarItem.backgroundColor = undefined
 
   // Set tooltip
@@ -83,6 +119,19 @@ function renderCurrentUsage() {
     displayMode,
     currentUsageUpdatedAt,
   )
+}
+
+function getStatusColor(usedPercent: number): string {
+  const themeKind = vscode.window.activeColorTheme.kind
+  const colors =
+    themeKind === vscode.ColorThemeKind.Light ||
+    themeKind === vscode.ColorThemeKind.HighContrastLight
+      ? STATUS_COLORS.light
+      : STATUS_COLORS.dark
+
+  if (usedPercent >= CRITICAL_THRESHOLD) return colors.red
+  if (usedPercent >= WARNING_THRESHOLD) return colors.yellow
+  return colors.green
 }
 
 /**

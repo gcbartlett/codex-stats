@@ -9,8 +9,8 @@ import { formatResetTime } from '../utils/time-formatter'
 export function createMainTooltip(
   rateLimits: RateLimits,
   authData: AuthData,
-  primaryPercent: number,
-  secondaryPercent: number,
+  primaryPercent: number | undefined,
+  secondaryPercent: number | undefined,
   displayMode: UsageDisplayMode = 'used',
   lastUpdated: Date = new Date(),
 ): vscode.MarkdownString {
@@ -34,15 +34,19 @@ export function createMainTooltip(
   tooltip.appendMarkdown(`### 🚀 Rate Limits\n\n`)
 
   if (rateLimits.primary) {
-    const primaryDisplayPercent = getDisplayPercent(primaryPercent, displayMode)
+    const primaryUsedPercent = primaryPercent ?? rateLimits.primary.used_percent
+    const primaryDisplayPercent = getDisplayPercent(
+      primaryUsedPercent,
+      displayMode,
+    )
     const windowHours = rateLimits.primary.window_minutes
       ? Math.floor(rateLimits.primary.window_minutes / 60)
       : 5
 
     // Primary limit with icon based on usage
     let limitIcon = '✅'
-    if (primaryPercent >= 90) limitIcon = '🔴'
-    else if (primaryPercent >= 75) limitIcon = '🟡'
+    if (primaryUsedPercent >= 90) limitIcon = '🔴'
+    else if (primaryUsedPercent >= 75) limitIcon = '🟡'
 
     tooltip.appendMarkdown(`#### ${limitIcon} ${windowHours}-Hour Limit\n\n`)
     tooltip.appendMarkdown(
@@ -57,8 +61,10 @@ export function createMainTooltip(
   }
 
   if (rateLimits.secondary) {
+    const secondaryUsedPercent =
+      secondaryPercent ?? rateLimits.secondary.used_percent
     const secondaryDisplayPercent = getDisplayPercent(
-      secondaryPercent,
+      secondaryUsedPercent,
       displayMode,
     )
     const windowDays = rateLimits.secondary.window_minutes
@@ -67,8 +73,8 @@ export function createMainTooltip(
 
     // Secondary limit with icon based on usage
     let limitIcon = '✅'
-    if (secondaryPercent >= 90) limitIcon = '🔴'
-    else if (secondaryPercent >= 75) limitIcon = '🟡'
+    if (secondaryUsedPercent >= 90) limitIcon = '🔴'
+    else if (secondaryUsedPercent >= 75) limitIcon = '🟡'
 
     tooltip.appendMarkdown(`#### ${limitIcon} ${windowDays}-Day Limit\n\n`)
     tooltip.appendMarkdown(
@@ -87,15 +93,15 @@ export function createMainTooltip(
   )
 
   // Usage Tips section (only show when usage is high)
-  if (primaryPercent > 75 || secondaryPercent > 75) {
+  if ((primaryPercent ?? 0) > 75 || (secondaryPercent ?? 0) > 75) {
     tooltip.appendMarkdown(`---\n\n`)
     tooltip.appendMarkdown(`### 💡 Tips\n\n`)
 
-    if (primaryPercent > 90 || secondaryPercent > 90) {
+    if ((primaryPercent ?? 0) > 90 || (secondaryPercent ?? 0) > 90) {
       tooltip.appendMarkdown(
         `> ⚠️ **High usage detected!** Consider reducing your request frequency.\n\n`,
       )
-    } else if (primaryPercent > 75 || secondaryPercent > 75) {
+    } else if ((primaryPercent ?? 0) > 75 || (secondaryPercent ?? 0) > 75) {
       tooltip.appendMarkdown(
         `> ℹ️ You're approaching your rate limits. Monitor your usage carefully.\n\n`,
       )

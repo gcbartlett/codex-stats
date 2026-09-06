@@ -27,6 +27,9 @@ export function activate(context: vscode.ExtensionContext) {
         refreshStatusBarDisplay()
       }
     }),
+    vscode.window.onDidChangeActiveColorTheme(() => {
+      refreshStatusBarDisplay()
+    }),
   )
   loadAuthAndStartMonitoring()
 }

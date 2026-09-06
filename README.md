@@ -40,9 +40,9 @@ Hover over the status bar item to see a beautifully formatted panel with:
 #### Usage Visualization
 
 - **Visual progress bars** using colored emoji indicators:
-  - 🟢 Green circles for usage below 80%
-  - 🟡 Yellow circles for usage 80-95%
-  - 🔴 Red circles for usage above 95%
+  - 🟩 Green squares for usage below 75%
+  - 🟨 Yellow squares for usage 75% to below 90%
+  - 🟥 Red squares for usage 90% or higher
 - **Time-based limits**: 5-hour and 7-day windows
 - **Smart reset timers**: Shows time remaining in human-readable format
 - **Icon indicators**: Clock for hourly, calendar for weekly limits
