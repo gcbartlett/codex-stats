@@ -98,6 +98,16 @@ function renderCurrentUsage() {
   }
 
   const mostConstrainedUsedPercent = Math.max(...availableUsedPercents)
+  const secondaryIsMostConstrained =
+    secondaryPercent !== undefined &&
+    (primaryPercent === undefined || secondaryPercent > primaryPercent)
+  const displayedWindow = secondaryIsMostConstrained
+    ? currentRateLimits.secondary
+    : currentRateLimits.primary
+  const displayedLimit = formatWindowLabel(
+    displayedWindow?.window_minutes,
+    secondaryIsMostConstrained ? '7d' : '5h',
+  )
   const statusColor = getStatusColor(mostConstrainedUsedPercent)
 
   const mostConstrainedDisplayPercent = getDisplayPercent(
@@ -106,7 +116,7 @@ function renderCurrentUsage() {
   )
 
   // Update status bar text with usage-mapped color
-  statusBarItem.text = `$(codex-blossom) ${mostConstrainedDisplayPercent.toFixed(0)}%`
+  statusBarItem.text = `$(codex-blossom) ${mostConstrainedDisplayPercent.toFixed(0)}% (${displayedLimit})`
   statusBarItem.color = statusColor
   statusBarItem.backgroundColor = undefined
 
@@ -148,6 +158,17 @@ function getDisplayPercent(
   displayMode: UsageDisplayMode,
 ): number {
   return displayMode === 'remaining' ? 100 - usedPercent : usedPercent
+}
+
+function formatWindowLabel(windowMinutes: number | undefined, fallback: string) {
+  if (windowMinutes === undefined || windowMinutes <= 0) return fallback
+
+  const minutesPerDay = 24 * 60
+  if (windowMinutes >= minutesPerDay) {
+    return `${Math.round(windowMinutes / minutesPerDay)}d`
+  }
+
+  return `${Math.max(1, Math.round(windowMinutes / 60))}h`
 }
 
 /**
