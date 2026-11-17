@@ -16,7 +16,7 @@ export function registerCommands(context: vscode.ExtensionContext) {
   const refreshCommand = vscode.commands.registerCommand(
     'codex-usage.refresh',
     async () => {
-      await updateUsage()
+      await updateUsage(true)
     },
   )
 

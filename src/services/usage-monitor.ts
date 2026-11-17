@@ -1,4 +1,5 @@
 import * as vscode from 'vscode'
+import { loadAuthData } from '../auth/auth-manager'
 import { CodexAPIClient } from '../codex-client'
 import { AuthData, RateLimits } from '../types'
 import {
@@ -24,7 +25,7 @@ export function initializeMonitor(authData: AuthData) {
 /**
  * Update usage statistics
  */
-export async function updateUsage() {
+export async function updateUsage(reloadAuth = false) {
   if (!apiClient || !currentAuthData) {
     logger.warn('Usage update skipped because the monitor is not initialized')
     return
@@ -32,9 +33,23 @@ export async function updateUsage() {
 
   try {
     showUpdating()
+
+    if (reloadAuth) {
+      await reloadAuthentication()
+    }
+
     apiClient.setProxyUrl(getProxyUrl())
 
-    const rateLimits = await apiClient.getRateLimits()
+    let rateLimits = await apiClient.getRateLimits()
+
+    if (!rateLimits && !reloadAuth) {
+      const previousAccessToken = currentAuthData.accessToken
+      await reloadAuthentication()
+
+      if (currentAuthData.accessToken !== previousAccessToken) {
+        rateLimits = await apiClient.getRateLimits()
+      }
+    }
 
     if (rateLimits) {
       updateStatusBar(rateLimits, currentAuthData)
@@ -55,6 +70,19 @@ export async function updateUsage() {
     })
     showUpdateError(error)
   }
+}
+
+/**
+ * Reload Codex credentials from disk and replace the API client when available.
+ */
+async function reloadAuthentication(): Promise<void> {
+  const latestAuthData = await loadAuthData()
+  if (!latestAuthData) {
+    return
+  }
+
+  currentAuthData = latestAuthData
+  apiClient = new CodexAPIClient(latestAuthData, getProxyUrl())
 }
 
 /**
